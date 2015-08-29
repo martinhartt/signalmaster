@@ -12,7 +12,7 @@ var yetify = require('yetify'),
     server = null;
 
 // Create an http(s) server instance to that socket.io can listen to
-if (config.server.secure) {
+if (process.env.SECURE || config.server.secure) {
     server = require('https').Server({
         key: fs.readFileSync(config.server.key),
         cert: fs.readFileSync(config.server.cert),
@@ -24,6 +24,10 @@ if (config.server.secure) {
 server.listen(port);
 
 var io = require('socket.io').listen(server);
+if (process.env.REDIS == 'true') {
+    var redis = require('socket.io-redis');
+    io.adapter(redis({ host: process.env.REDIS_HOST, port: process.env.REDIS_PORT }));
+}
 
 if (config.logLevel) {
     // https://github.com/Automattic/socket.io/wiki/Configuring-Socket.IO
@@ -56,8 +60,8 @@ function safeCb(cb) {
 io.sockets.on('connection', function (client) {
     client.resources = {
         screen: false,
-        video: true,
-        audio: false
+        video: false,
+        audio: true
     };
 
     // pass a message to another id
@@ -99,8 +103,9 @@ io.sockets.on('connection', function (client) {
         // sanity check
         if (typeof name !== 'string') return;
         // check if maximum number of clients reached
-        if (config.rooms && config.rooms.maxClients > 0 && 
-          clientsInRoom(name) >= config.rooms.maxClients) {
+        var maxClients = process.env.MAX_CLIENTS || config.rooms.maxClients;
+        if (maxClients && maxClients > 0 &&
+          clientsInRoom(name) >= maxClients) {
             safeCb(cb)('full');
             return;
         }
@@ -147,29 +152,31 @@ io.sockets.on('connection', function (client) {
 
 
     // tell client about stun and turn servers and generate nonces
-    client.emit('stunservers', config.stunservers || []);
+    client.emit('stunservers', process.env.STUN_URL || config.stunservers || []);
 
     // create shared secret nonces for TURN authentication
     // the process is described in draft-uberti-behave-turn-rest
     var credentials = [];
-    config.turnservers.forEach(function (server) {
-        var hmac = crypto.createHmac('sha1', server.secret);
+
+    if (process.env.TURN) {
+        var hmac = crypto.createHmac('sha1', process.env.TURN_SECRET);
         // default to 86400 seconds timeout unless specified
-        var username = Math.floor(new Date().getTime() / 1000) + (server.expiry || 86400) + "";
+        var username = Math.floor(new Date().getTime() / 1000) + (process.env.TURN_EXPIRY || 86400) + "";
         hmac.update(username);
         credentials.push({
             username: username,
             credential: hmac.digest('base64'),
-            url: server.url
+            url: process.env.TURN_URL
         });
-    });
+    }
+
     client.emit('turnservers', credentials);
 });
 
 if (config.uid) process.setuid(config.uid);
 
 var httpUrl;
-if (config.server.secure) {
+if (process.env.SECURE || config.server.secure) {
     httpUrl = "https://localhost:" + port;
 } else {
     httpUrl = "http://localhost:" + port;
