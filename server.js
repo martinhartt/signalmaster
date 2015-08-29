@@ -1,10 +1,9 @@
 /*global console*/
 var yetify = require('yetify'),
-    config = require('getconfig'),
     uuid = require('node-uuid'),
     crypto = require('crypto'),
     fs = require('fs'),
-    port = parseInt(process.env.PORT || config.server.port, 10),
+    port = parseInt(process.env.PORT, 10),
     server_handler = function (req, res) {
         res.writeHead(404);
         res.end();
@@ -12,11 +11,11 @@ var yetify = require('yetify'),
     server = null;
 
 // Create an http(s) server instance to that socket.io can listen to
-if (process.env.SECURE || config.server.secure) {
+if (process.env.SECURE) {
     server = require('https').Server({
-        key: fs.readFileSync(config.server.key),
-        cert: fs.readFileSync(config.server.cert),
-        passphrase: config.server.password
+        key: fs.readFileSync(process.env.SERVER_KEY),
+        cert: fs.readFileSync(process.env.SERVER_CERT),
+        passphrase: process.env.SERVER_PASSWORD
     }, server_handler);
 } else {
     server = require('http').Server(server_handler);
@@ -29,9 +28,9 @@ if (process.env.REDIS == 'true') {
     io.adapter(redis({ host: process.env.REDIS_HOST, port: process.env.REDIS_PORT }));
 }
 
-if (config.logLevel) {
+if (process.env.LOG_LEVEL) {
     // https://github.com/Automattic/socket.io/wiki/Configuring-Socket.IO
-    io.set('log level', config.logLevel);
+    io.set('log level', process.env.LOG_LEVEL);
 }
 
 function describeRoom(name) {
@@ -103,7 +102,7 @@ io.sockets.on('connection', function (client) {
         // sanity check
         if (typeof name !== 'string') return;
         // check if maximum number of clients reached
-        var maxClients = process.env.MAX_CLIENTS || config.rooms.maxClients;
+        var maxClients = process.env.MAX_CLIENTS;
         if (maxClients && maxClients > 0 &&
           clientsInRoom(name) >= maxClients) {
             safeCb(cb)('full');
@@ -152,7 +151,7 @@ io.sockets.on('connection', function (client) {
 
 
     // tell client about stun and turn servers and generate nonces
-    client.emit('stunservers', process.env.STUN_URL || config.stunservers || []);
+    client.emit('stunservers', process.env.STUN_URL || []);
 
     // create shared secret nonces for TURN authentication
     // the process is described in draft-uberti-behave-turn-rest
@@ -173,10 +172,10 @@ io.sockets.on('connection', function (client) {
     client.emit('turnservers', credentials);
 });
 
-if (config.uid) process.setuid(config.uid);
+if (process.env.UID) process.setuid(process.env.UID);
 
 var httpUrl;
-if (process.env.SECURE || config.server.secure) {
+if (process.env.SECURE) {
     httpUrl = "https://localhost:" + port;
 } else {
     httpUrl = "http://localhost:" + port;

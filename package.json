@@ -19,8 +19,5 @@
     "precommit-hook": "0.3.10",
     "tape": "^2.13.1"
   },
-  "license": "MIT",
-  "scripts": {
-    "test": "node test.js"
-  }
+  "license": "MIT"
 }
