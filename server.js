@@ -151,7 +151,7 @@ io.sockets.on('connection', function (client) {
 
 
     // tell client about stun and turn servers and generate nonces
-    client.emit('stunservers', process.env.STUN_URL || []);
+    client.emit('stunservers', [{ url: process.env.STUN_URL }] || []);
 
     // create shared secret nonces for TURN authentication
     // the process is described in draft-uberti-behave-turn-rest
