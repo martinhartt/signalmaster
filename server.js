@@ -149,9 +149,20 @@ io.sockets.on('connection', function (client) {
         ));
     });
 
+    var stunservers = [];
+
+    if (process.env.STUN_URL) {
+        stunservers.push({
+            url: process.env.STUN_URL
+        });
+    }
+
+    stunservers.push(
+        {"url": "stun:stun.l.google.com:19302"}
+    );
 
     // tell client about stun and turn servers and generate nonces
-    client.emit('stunservers', [{ url: process.env.STUN_URL }] || []);
+    client.emit('stunservers', stunservers);
 
     // create shared secret nonces for TURN authentication
     // the process is described in draft-uberti-behave-turn-rest
