@@ -5,7 +5,6 @@ var yetify = require('yetify'),
     fs = require('fs'),
     port = parseInt(process.env.SIGNALMASTER_PORT || 8888, 10),
     server_handler = function (req, res) {
-        console.log('signalmaster', req);
         res.writeHead(404);
         res.end();
     },
